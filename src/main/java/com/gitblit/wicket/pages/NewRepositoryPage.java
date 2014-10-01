@@ -68,8 +68,17 @@ public class NewRepositoryPage extends RootSubPage {
 	private Model<String> gitignoreModel;
 	private IModel<Boolean> addGitflowModel;
 	private IModel<Boolean> addGitignoreModel;
+	private IModel<Boolean> addGitBugtraqModel;
 	private AccessPolicyPanel accessPolicyPanel;
 	private RepositoryNamePanel namePanel;
+
+	private File gitBugTraqFile() {
+		File file = app().runtime().getFileOrFolder("${baseFolder}/gitbugtraq");
+		if (file.exists() && file.isFile() && file.length() > 0) {
+			return file;
+		}
+		return null;
+	}
 
 	public NewRepositoryPage() {
 		// create constructor
@@ -134,12 +143,13 @@ public class NewRepositoryPage extends RootSubPage {
 							throw new GitBlitException(getString("gb.pleaseSelectGitIgnore"));
 						}
 					}
+					boolean addGitBugtraq = addGitBugtraqModel.getObject();
 
 					// init the repository
 					app().gitblit().updateRepositoryModel(repositoryModel.name, repositoryModel, true);
 
 					// optionally create an initial commit
-					initialCommit(repositoryModel, addReadme, gitignore, useGitFlow);
+					initialCommit(repositoryModel, addReadme, gitignore, useGitFlow, addGitBugtraq);
 
 				} catch (GitBlitException e) {
 					error(e.getMessage());
@@ -209,6 +219,16 @@ public class NewRepositoryPage extends RootSubPage {
 				gitignoreModel,
 				gitignores).setVisible(gitignores.size() > 0));
 
+		addGitBugtraqModel = Model.of(false);
+		BooleanOption gbt = new BooleanOption("addGitBugtraq",
+				"Include a .gitbugtraq file",
+				"Provides a method for linking certain commit text to URLs.",
+				addGitBugtraqModel);
+		if (gitBugTraqFile() == null) {
+			gbt.setVisible(false);
+		}
+		form.add(gbt);
+
 		// TODO consider gitflow at creation (ticket-55)
 		addGitflowModel = Model.of(false);
 		form.add(new BooleanOption("addGitFlow",
@@ -228,11 +248,12 @@ public class NewRepositoryPage extends RootSubPage {
 	 * @param addReadme
 	 * @param gitignore
 	 * @param addGitFlow
+	 * @param addGitBugtraq
 	 * @return true if an initial commit was created
 	 */
 	protected boolean initialCommit(RepositoryModel repository, boolean addReadme, String gitignore,
-			boolean addGitFlow) {
-		boolean initialCommit = addReadme || !StringUtils.isEmpty(gitignore) || addGitFlow;
+			boolean addGitFlow, boolean addGitBugtraq) {
+		boolean initialCommit = addReadme || !StringUtils.isEmpty(gitignore) || addGitFlow || addGitBugtraq;
 		if (!initialCommit) {
 			return false;
 		}
@@ -305,6 +326,23 @@ public class NewRepositoryPage extends RootSubPage {
 
 				indexBuilder.add(entry);
 			}
+
+			// insert a .gitbugtraq if one is present in baseFolder
+			if (addGitBugtraq) {
+				File gitbugtraq = gitBugTraqFile();
+				if (gitbugtraq != null) {
+					byte [] bytes = FileUtils.readContent(gitbugtraq);
+					if (!ArrayUtils.isEmpty(bytes)) {
+						DirCacheEntry entry = new DirCacheEntry(".gitbugtraq");
+						entry.setLength(bytes.length);
+						entry.setLastModified(System.currentTimeMillis());
+						entry.setFileMode(FileMode.REGULAR_FILE);
+						entry.setObjectId(odi.insert(org.eclipse.jgit.lib.Constants.OBJ_BLOB, bytes));
+
+						indexBuilder.add(entry);
+					}
+				}
+                        }
 
 			indexBuilder.finish();
 
