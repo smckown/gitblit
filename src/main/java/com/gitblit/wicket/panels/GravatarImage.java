@@ -52,14 +52,25 @@ public class GravatarImage extends BasePanel {
 	public GravatarImage(String id, String username, String emailaddress, String cssClass, int width, boolean identicon) {
 		super(id);
 
-		if (app().settings().getBoolean(Keys.web.allowGravatar, true)) {
-			String email = emailaddress == null ? username.toLowerCase() : emailaddress.toLowerCase();
-			String url;
+		String email = emailaddress == null ? username.toLowerCase() : emailaddress.toLowerCase();
+		String url = app().settings().getString(Keys.web.localAvatarUrl, "");
+		if (url != "") {
+			int atpos = email.indexOf('@');
+			if (atpos > 0) {
+				email = email.substring(0, atpos);
+			}
+			if (width <= 0) {
+				width = 50;
+			}
+			url += String.format("%s-%d.jpg", email, width);
+		} else if (app().settings().getBoolean(Keys.web.allowGravatar, true)) {
 			if (identicon) {
 				url = ActivityUtils.getGravatarIdenticonUrl(email, width);
 			} else {
 				url = ActivityUtils.getGravatarThumbnailUrl(email, width);
 			}
+		}
+		if (url != "") {
 			ExternalImage image = new ExternalImage("image", url);
 			if (cssClass != null) {
 				WicketUtils.setCssClass(image, cssClass);
