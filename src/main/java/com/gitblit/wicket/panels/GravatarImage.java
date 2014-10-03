@@ -52,20 +52,24 @@ public class GravatarImage extends BasePanel {
 	public GravatarImage(String id, String username, String emailaddress, String cssClass, int width, boolean identicon) {
 		super(id);
 
-		String email = emailaddress == null ? username.toLowerCase() : emailaddress.toLowerCase();
-		String url;
-		if (identicon) {
-			url = ActivityUtils.getGravatarIdenticonUrl(email, width);
+		if (app().settings().getBoolean(Keys.web.allowGravatar, true)) {
+			String email = emailaddress == null ? username.toLowerCase() : emailaddress.toLowerCase();
+			String url;
+			if (identicon) {
+				url = ActivityUtils.getGravatarIdenticonUrl(email, width);
+			} else {
+				url = ActivityUtils.getGravatarThumbnailUrl(email, width);
+			}
+			ExternalImage image = new ExternalImage("image", url);
+			if (cssClass != null) {
+				WicketUtils.setCssClass(image, cssClass);
+			}
+			add(image);
+			WicketUtils.setHtmlTooltip(image, username);
+			setVisible(true);
 		} else {
-			url = ActivityUtils.getGravatarThumbnailUrl(email, width);
+			setVisible(false);
 		}
-		ExternalImage image = new ExternalImage("image", url);
-		if (cssClass != null) {
-			WicketUtils.setCssClass(image, cssClass);
-		}
-		add(image);
-		WicketUtils.setHtmlTooltip(image, username);
-		setVisible(app().settings().getBoolean(Keys.web.allowGravatar, true));
 	}
 
 	public void setTooltip(String tooltip) {
